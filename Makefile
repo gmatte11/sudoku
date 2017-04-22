@@ -1,8 +1,8 @@
 .PHONY=all clean
 
-CXX=clang++
-CXXFLAGS=-std=c++1z -g -Iinclude -Irange-v3/include
-LD=clang++
+CXX=g++
+CXXFLAGS=-std=c++17 -fconcepts -g -Iinclude -Irange-v3/include
+LD=g++
 LDFLAGS=
 LDLIBS=
 

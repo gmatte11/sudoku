@@ -7,27 +7,49 @@ using namespace ranges;
  
 constexpr const char *LINE_SEP = "-------------------------";
 
-auto print_line = [] (auto line)
+class Grid
 {
-    std::cout << "| ";
-    for_each(line | view::chunk(3) | view::join('|'), [] (char c) { std::cout << c << ' '; });
-    std::cout << "|\n";
-};
+public:
+    struct alignas(int8_t) Cell
+    {
+        uint8_t val_:4;
+        bool fixed_:1;
+        uint8_t pad_:3;
 
-auto print_lines = [] (auto lines)
-{
-    std::cout << LINE_SEP << '\n';
-    for_each(lines, print_line);
+        char print() const { return val_ + '0'; }
+        uint8_t val() const { return val_; }
+        operator char() const { return print(); }
+    };
+    static_assert(sizeof(Cell) == 1);
+
+    Grid()
+    {
+        int i = 0;
+        for (Cell & cell : data_)
+        {
+            cell.val_ = (i++ % 9) + 1;
+        }
+    }
+
+    any_view<char> cells() const { return data_; }
+
+    std::array<Cell, 81> data_;
 };
 
 int main(int argc, char *argv[])
 {
-    auto init_rng = view::ints(0) | view::transform([] (int i) { return '1' + static_cast<char>(i % 9); }) | view::take(81);
+    Grid grid;
 
-    std::vector<char> grid;
-    grid = init_rng;
-
-    for_each(grid | view::chunk(9) | view::chunk(3), print_lines);
+    for (auto && lines : grid.cells() | view::chunk(9) | view::chunk(3))
+    {
+        std::cout << LINE_SEP << '\n';
+        for (auto && line : lines)
+        {
+            std::cout << "| ";
+            for (char c : std::move(line) | view::chunk(3) | view::join('|')) { std::cout << c << ' '; }
+            std::cout << "|\n";
+        }
+    }
     std::cout << LINE_SEP << '\n'; 
     return 0;
 }
