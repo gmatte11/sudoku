@@ -1,6 +1,6 @@
 #pragma once
 #include <range/v3/all.hpp>
-/* Directly taken from Eric Niebler's Calendar example.
+/* Taken from Eric Niebler's Calendar example.
    https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
 */
 

@@ -3,11 +3,12 @@
 #include <iostream>
 #include <string>
 
-#include "transpose_view.h"
+#include "chunk_view.h"
+#include "interleave_view.h"
 
 using namespace ranges;
 using namespace sudoku_view;
- 
+
 constexpr const char *LINE_SEP = "-------------------------";
 
 
@@ -42,14 +43,15 @@ public:
     }
 
     auto columns()
-    {  
-        return rows() | transpose();
+    {
+        return rows() | interleave() | chunk(9);
     }
 
-    /*auto zones()
-    {  
-        return cells()| zone_view;
-    }*/
+    auto zones()
+    {
+        //return cells() | view::group_by([](Cell const& first, Cell const& elem) { return (&elem - &first) % 3 == 0 && (&elem - &first) < (9 * 3); }) | view::chunk(9);
+        return cells() | view::chunk(3) | view::chunk(9) | interleave() /*| view::concat() | view::chunk(9)*/;
+    }
 
     std::array<Cell, 81> data_;
 };
@@ -66,7 +68,7 @@ void print(Grid const& grid)
             std::cout << "|\n";
         }
     }
-    std::cout << LINE_SEP << '\n'; 
+    std::cout << LINE_SEP << '\n';
 }
 
 template <typename Rng>
@@ -95,8 +97,8 @@ int main(int argc, char *argv[])
     fill_cells(grid.columns());
     print(grid);
 
-    /*std::cout << "\n\nZones\n";
+    std::cout << "\n\nZones\n";
     fill_cells(grid.zones());
-    print(grid);*/
+    print(grid);
     return 0;
 }
