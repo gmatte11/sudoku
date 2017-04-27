@@ -49,8 +49,7 @@ public:
 
     auto zones()
     {
-        //return cells() | view::group_by([](Cell const& first, Cell const& elem) { return (&elem - &first) % 3 == 0 && (&elem - &first) < (9 * 3); }) | view::chunk(9);
-        return cells() | view::chunk(3) | view::chunk(9) | interleave() /*| view::concat() | view::chunk(9)*/;
+        return cells() | view::chunk(3) | view::chunk(9) | view::for_each([](auto&& rng) { return rng | chunk(3) | interleave(); }) | view::join | view::chunk(9);
     }
 
     std::array<Cell, 81> data_;
