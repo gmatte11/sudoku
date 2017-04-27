@@ -49,7 +49,9 @@ public:
 
     auto zones()
     {
-        return cells() | view::chunk(3) | view::chunk(9) | view::for_each([](auto&& rng) { return rng | chunk(3) | interleave(); }) | view::join | view::chunk(9);
+        return cells() | view::chunk(3) | view::chunk(9) 
+                       | view::for_each([](auto&& rng) { return std::move(rng) | chunk(3) | interleave(); }) 
+                       | view::join | view::chunk(9);
     }
 
     std::array<Cell, 81> data_;
