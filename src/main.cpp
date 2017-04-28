@@ -12,6 +12,12 @@ using namespace sudoku_view;
 constexpr const char *LINE_SEP = "-------------------------";
 
 
+auto&& rows_view = view::chunk(9);
+auto&& cols_view = rows_view | interleave() | chunk(9);
+auto&& zone_view = view::chunk(3) | view::chunk(9) 
+                 | view::for_each([](auto&& rng) { return std::move(rng) | chunk(3) | interleave(); }) 
+                 | view::join | view::chunk(9);
+
 class Grid
 {
 public:
@@ -27,31 +33,45 @@ public:
         {
         }
 
-        char as_char() const { return val_ + '0'; }
+        char as_char() const { return (val_ != 0) ? val_ + '0' : '_'; }
         uint8_t val() const { return val_; }
 
         operator char() const { return as_char(); }
     };
     static_assert(sizeof(Cell) == 1);
 
-    any_view<char> chars() const { return data_; }
     auto cells() { return view::all(data_); }
+
+    template <typename Rng>
+    void init(Rng&& values)
+    {
+        auto it = values.begin();
+        for (Cell & c : data_)
+        {
+            int i = *it++;
+            c.val_ = i;
+            c.fixed_ = (i != 0);
+        }
+    }
+
+    auto chars() const 
+    { 
+        return data_ | view::transform([](Cell const& c) {return (char)c; }); 
+    }
 
     auto rows()
     {
-        return cells() | view::chunk(9);
+        return cells() | rows_view;
     }
 
     auto columns()
     {
-        return rows() | interleave() | chunk(9);
+        return cells() | cols_view;
     }
 
     auto zones()
     {
-        return cells() | view::chunk(3) | view::chunk(9) 
-                       | view::for_each([](auto&& rng) { return std::move(rng) | chunk(3) | interleave(); }) 
-                       | view::join | view::chunk(9);
+        return cells() | zone_view;
     }
 
     std::array<Cell, 81> data_;
@@ -59,7 +79,7 @@ public:
 
 void print(Grid const& grid)
 {
-    for (auto && lines : grid.chars() | view::chunk(9) | view::chunk(3))
+    for (auto && lines : grid.chars() | rows_view | view::chunk(3))
     {
         std::cout << LINE_SEP << '\n';
         for (auto && line : lines)
@@ -72,34 +92,25 @@ void print(Grid const& grid)
     std::cout << LINE_SEP << '\n';
 }
 
-template <typename Rng>
-void fill_cells(Rng && rng)
+std::array<int, 81> test_grid = 
 {
-    for (auto && cells : rng)
-    {
-        auto nums = view::ints(1);
-        auto i = std::begin(nums);
-        for (auto & cell : cells)
-        {
-            cell.val_ = *i++;
-        }
-    }
-}
+    7, 9, 0,  0, 0, 0,  3, 0, 0,
+    0, 0, 0,  0, 0, 6,  9, 0, 0,
+    8, 0, 0,  0, 3, 0,  0, 7, 6,
+
+    0, 0, 0,  0, 0, 5,  0, 0, 2,
+    0, 0, 5,  4, 1, 8,  7, 0, 0,
+    4, 0, 0,  7, 0, 0,  0, 0, 0,
+
+    6, 1, 0,  0, 9, 0,  0, 0, 8,
+    0, 0, 2,  3, 0, 0,  0, 0, 0,
+    0, 0, 9,  0, 0, 0,  0, 5, 4
+};
 
 int main(int argc, char *argv[])
 {
     Grid grid;
-
-    std::cout << "Rows\n";
-    fill_cells(grid.rows());
-    print(grid);
-
-    std::cout << "\n\nColumns\n";
-    fill_cells(grid.columns());
-    print(grid);
-
-    std::cout << "\n\nZones\n";
-    fill_cells(grid.zones());
+    grid.init(view::all(test_grid));
     print(grid);
     return 0;
 }
