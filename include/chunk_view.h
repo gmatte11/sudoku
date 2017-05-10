@@ -4,7 +4,7 @@
    https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
 */
 
-namespace sudoku_view
+namespace sudoku
 {
     // In:  Range<T>
     // Out: Range<Range<T>>, where each inner range has $n$ elements.
@@ -47,7 +47,7 @@ namespace sudoku_view
     // In:  Range<T>
     // Out: Range<Range<T>>, where each inner range has $n$ elements.
     //                       The last range may have fewer.
-    auto chunk(std::size_t n) {
+    inline auto chunk(std::size_t n) {
         using namespace ranges;
         return make_pipeable([=](auto&& rng) {
             using Rng = decltype(rng);

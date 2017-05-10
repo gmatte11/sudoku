@@ -6,7 +6,7 @@ LD=g++
 LDFLAGS=
 LDLIBS=
 
-SRCS=main.cpp
+SRCS=main.cpp solver.cpp
 OBJS=$(patsubst %.cpp,build/%.o,$(SRCS))
 TARGET=sudoku
 

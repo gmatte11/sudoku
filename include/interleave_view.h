@@ -4,7 +4,7 @@
    https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
 */
 
-namespace sudoku_view
+namespace sudoku
 {
     // Flattens a range of ranges by iterating the inner
     // ranges in round-robin fashion.
@@ -48,7 +48,7 @@ namespace sudoku_view
     // In:  Range<Range<T>>
     // Out: Range<T>, flattened by walking the ranges
     //                round-robin fashion.
-    auto interleave() {
+    inline auto interleave() {
         using namespace ranges;
         return make_pipeable([](auto&& rngs) {
             using Rngs = decltype(rngs);
