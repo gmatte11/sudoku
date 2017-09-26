@@ -5,6 +5,9 @@
 #include "chunk_view.h"
 #include "interleave_view.h"
 
+#include <iostream>
+#include <array>
+
 namespace sudoku
 {
     inline auto rows_view() { return ranges::view::chunk(9); }
@@ -68,7 +71,7 @@ namespace sudoku
 
         auto chars() const 
         { 
-            return data_ | ranges::view::transform([](Cell const& c) {return (char)c; }); 
+            return data_ | ranges::view::transform([](Cell const& c) { return (char)c; }); 
         }
 
         auto rows()
@@ -88,4 +91,21 @@ namespace sudoku
 
         std::array<Cell, 81> data_;
     };
+
+    inline void print_grid(Grid const& grid)
+    {
+        constexpr const char *LINE_SEP = "-------------------------";
+
+        for (auto && lines : grid.chars() | rows_view() | ranges::view::chunk(3))
+        {
+            std::cout << LINE_SEP << '\n';
+            for (auto && line : lines)
+            {
+                std::cout << "| ";
+                for (char c : std::move(line) | ranges::view::chunk(3) | ranges::view::join('|')) { std::cout << c << ' '; }
+                std::cout << "|\n";
+            }
+        }
+        std::cout << LINE_SEP << '\n';
+    }
 }

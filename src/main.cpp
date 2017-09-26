@@ -1,30 +1,11 @@
 #include <range/v3/all.hpp>
-#include <vector>
-#include <iostream>
-#include <string>
+#include <array>
 
 #include "grid.h"
 #include "solver.h"
 
 using namespace ranges;
 using namespace sudoku;
-
-constexpr const char *LINE_SEP = "-------------------------";
-
-void print(Grid const& grid)
-{
-    for (auto && lines : grid.chars() | rows_view() | view::chunk(3))
-    {
-        std::cout << LINE_SEP << '\n';
-        for (auto && line : lines)
-        {
-            std::cout << "| ";
-            for (char c : std::move(line) | view::chunk(3) | view::join('|')) { std::cout << c << ' '; }
-            std::cout << "|\n";
-        }
-    }
-    std::cout << LINE_SEP << '\n';
-}
 
 std::array<int, 81> test_grid = 
 {
@@ -45,10 +26,10 @@ int main(int argc, char *argv[])
 {
     Grid grid;
     grid.init(view::all(test_grid));
-    print(grid);
+    print_grid(grid);
 
     Solver solver(&grid);
     solver.solve_step();
-    print(grid);
+    print_grid(grid);
     return 0;
 }

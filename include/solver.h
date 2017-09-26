@@ -12,6 +12,8 @@ namespace sudoku
         void solve_step();
 
     private:
+        bool step_bruteforce();
+
         Grid *grid_;
     };
 }
