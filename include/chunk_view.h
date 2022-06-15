@@ -72,10 +72,7 @@ namespace sudoku
             using base_t = std::conditional_t<!Const, V, const V>;
             using base_it = ranges::iterator_t<base_t>;
 
-            using iterator_category = std::conditional_t<
-                ranges::sized_sentinel_for<ranges::sentinel_t<base_t>, base_it>,
-                ranges::random_access_iterator_tag,
-                ranges::bidirectional_iterator_tag>;
+            using iterator_category = ranges::random_access_iterator_tag;
 
             using value_type = ranges::subrange<base_it>;
             using difference_type = ranges::iter_difference_t<base_it>;
@@ -92,18 +89,20 @@ namespace sudoku
 
 
             constexpr iterator& operator++() { i_ = next(); return *this; }
-            constexpr iterator operator++(int) const { return iterator{base_, next(1), n_}; }
+            constexpr iterator operator++(int) const { return iterator{base_, next(), n_}; }
             constexpr iterator& operator--() { i_ = prev(); return *this; }
-            constexpr iterator operator--(int) const { return iterator{base_, prev(1), n_}; }
+            constexpr iterator operator--(int) const { return iterator{base_, prev(), n_}; }
 
-            constexpr iterator& operator+=(int i) { i_ = next(); return *this; }
-            constexpr iterator operator+(int i) const { return iterator{base_, next(i), n_}; }
-            constexpr iterator& operator-=(int i) { i_ = prev(); return *this; }
-            constexpr iterator operator-(int i) const { return iterator{base_, prev(i), n_}; }
+            // TODO: negative numbers
+            constexpr iterator& operator+=(difference_type n) { i_ = next(n); return *this; }
+            constexpr iterator operator+(difference_type n) const { return iterator{base_, next(n), n_}; }
+            constexpr iterator& operator-=(difference_type n) { i_ = prev(n); return *this; }
+            constexpr iterator operator-(difference_type n) const { return iterator{base_, prev(n), n_}; }
 
             constexpr difference_type operator-(iterator const& rhs) const
             {
-                return (i_ - rhs.i_) / n_;
+                auto q = std::div(i_ - rhs.i_, n_);
+                return q.quot + !!q.rem;
             }
 
             constexpr value_type operator*() const
@@ -111,9 +110,9 @@ namespace sudoku
                 return ranges::subrange(i_, next());
             }
 
-            constexpr value_type operator[](int i) const
+            constexpr value_type operator[](difference_type n) const
             {
-                return ranges::subrange(next(i), next(i + 1));
+                return *(*this + n);
             }
             
             // makes nano::detail::detail::weakly_equality_comparable_with happy for common_ranges
@@ -148,10 +147,10 @@ namespace sudoku
             }
 
         private:
-            constexpr base_it next(int i = 1) const { return ranges::next(i_, i * n_, ranges::end(*base_)); }
-            constexpr base_it prev(int i = 1) const { return ranges::prev(i_, i * n_, ranges::begin(*base_)); }
+            constexpr base_it next(difference_type i = 1) const { return ranges::next(i_, i * n_, ranges::end(*base_)); }
+            constexpr base_it prev(difference_type i = 1) const { return ranges::prev(i_, i * n_, ranges::begin(*base_)); }
 
-            constexpr bool done() const { return base_ == nullptr || i_ >= ranges::end(*base_); }
+            constexpr bool done() const { return base_ == nullptr || i_ == ranges::end(*base_); }
 
             base_t* base_ = nullptr;
             base_it i_;
@@ -195,18 +194,6 @@ namespace sudoku
                 return iterator<true>{&base_, ranges::end(base_), count_};
             else
                 return ranges::end(base_);
-        }
-
-        constexpr auto operator[](int i) const
-        {
-            return *(begin() + i);
-        }
-
-        template <typename VV = V, typename = std::enable_if_t<ranges::sized_range<VV>>>
-        constexpr auto size() const 
-        { 
-            auto q = std::div(ranges::size(base_), count_);
-            return q.quot + !!q.rem;
         }
 
     private:

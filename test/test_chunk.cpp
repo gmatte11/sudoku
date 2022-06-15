@@ -5,11 +5,23 @@
 #include <array>
 #include <vector>
 
+using namespace Catch::Matchers;
+
 template <typename R>
 auto to_vector(const R& r)
-    -> std::enable_if_t<ranges::sized_range<R>, std::vector<ranges::range_value_t<R>>>
 {
-    return std::vector<ranges::range_value_t<R>>(ranges::begin(r), ranges::end(r));
+    using value_t = ranges::range_value_t<const R>;
+    if constexpr (ranges::common_range<R>)
+    {
+        return std::vector<value_t>(ranges::begin(r), ranges::end(r));
+    }
+    else
+    {
+        std::vector<value_t> v;
+        for (const value_t& val : r)
+            v.push_back(std::move(val));
+        return v;
+    }
 }
 
 TEST_CASE("chunk of common ranges", "[views]")
@@ -23,14 +35,14 @@ TEST_CASE("chunk of common ranges", "[views]")
 
     CHECK(ranges::size(v) == 3);
 
-    auto chunk2 = v[1];
-    CHECK_THAT(to_vector(chunk2), Catch::Matchers::Equals(std::vector{3, 4}));
+    CHECK_THAT(to_vector(v[0]), Equals(std::vector{1, 2}));
+    CHECK_THAT(to_vector(v[1]), Equals(std::vector{3, 4}));
+    CHECK_THAT(to_vector(v[2]), Equals(std::vector{5}));
 }
 
 TEST_CASE("chunk of views")
 {
     using namespace sudoku;
-    using namespace Catch::Matchers;
 
     auto bounded = ranges::views::iota(0, 100);
     auto unbounded = ranges::views::iota(0);
@@ -40,8 +52,8 @@ TEST_CASE("chunk of views")
         auto v = views::chunk(unbounded, 2);
 
         using vt = decltype(v);
-        CHECK(ranges::view<vt>);
-        CHECK_FALSE(ranges::sized_range<vt>);
+        STATIC_REQUIRE(ranges::view<vt>);
+        STATIC_REQUIRE_FALSE(ranges::sized_range<vt>);
     
         CHECK_THAT(to_vector(v[2]), Equals(to_vector(ranges::views::iota(2 * 2, 2 * 3)))); // [4, 6[
     }
@@ -51,21 +63,46 @@ TEST_CASE("chunk of views")
         auto v = bounded | views::chunk(25);
 
         using vt = decltype(v);
-        CHECK(ranges::view<vt>);
-        CHECK(ranges::sized_range<vt>);
+        STATIC_REQUIRE(ranges::view<vt>);
+        STATIC_REQUIRE(ranges::sized_range<vt>);
         
         CHECK_THAT(to_vector(v[2]), Equals(to_vector(ranges::views::iota(25 * 2, 25 * 3)))); // [50, 75[
     }
 
     SECTION("chunk of chunk")
     {
-        auto v =  bounded | views::chunk(25) | views::chunk(5);
+        auto v0 = bounded | views::chunk(5);
+        auto v =  v0 | views::chunk(5);
 
         using vt = decltype(v);
-        CHECK(ranges::view<vt>);
-        CHECK(ranges::random_access_range<vt>);
+        STATIC_REQUIRE(ranges::view<vt>);
+        STATIC_REQUIRE(ranges::random_access_range<vt>);
 
-        auto compare = ranges::views::iota((25 / 5) * 2 + 5 * 0, (25 / 5) * 2 + 5 * 1); // [10, 15[
-        CHECK_THAT(to_vector(v[2][0]), Equals(to_vector(compare))); 
+        CAPTURE(v0);
+        CAPTURE(v0[0]);
+        CHECK(ranges::size(v0) == 20);
+
+        CAPTURE(v);
+        CHECK(ranges::size(v) == 4);
+
+        CAPTURE(v[2]);
+        CHECK(ranges::size(v[2]) == 5);
+        
+        auto compare = ranges::views::iota(25 * 2 + 5 * 2, 25 * 2 + 5 * 3); // [60, 65[
+        CHECK_THAT(to_vector(v[2][2]), Equals(to_vector(compare)));
+
+        auto joined = v[2] | ranges::views::join;
+        using jt = decltype(joined);
+        STATIC_REQUIRE(ranges::view<jt>);
+        STATIC_REQUIRE(ranges::input_range<jt>);
+
+        // joined type defeats to_vector... and can't be captured.
+        std::vector<int> vec;
+        for (int i : joined)
+            vec.push_back(i);
+        CAPTURE(vec);
+
+        compare = ranges::views::iota(25 * 2, 25 * 3); // [50, 75[
+        CHECK_THAT(vec, Equals(to_vector(compare)));
     }
 }
