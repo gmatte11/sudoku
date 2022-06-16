@@ -6,7 +6,7 @@
 #include "interleave_view.h"
 
 #include <array>
-#include <experimental/resumable>
+#include <coroutine>
 
 namespace sudoku
 {
@@ -34,37 +34,7 @@ namespace sudoku
                 }};
         }*/
 
-        inline auto interleave()
-        {
-            return ranges::detail::rao_proxy{
-                [](auto&& r) -> ranges::range_value_t<ranges::range_value_t<decltype(r)>>
-                {
-                    using R = decltype(r);
-
-                    static_assert(ranges::sized_range<R>);
-                    static_assert(ranges::sized_range<ranges::range_value_t<R>>);
-
-                    ranges::range_difference_t<R> max = nano::max(r, ranges::size);
-
-                    for (int i : ranges::iota(0, max))
-                    {
-                        for (auto sub : r)
-                        {
-                            co_yield *(sub[i % ranges::size(sub)]);
-                        }
-                    }
-                }};
-        }
-
-        inline auto join()
-        {
-            return ranges::detail::rao_proxy{
-                [](auto&& r)
-                {
-                    return ranges::views::join(r);
-                }
-            };
-        }
+        
 
         inline auto rows() { return views::chunk(9); }
         inline auto cols() { return views::rows() /*| views::interleave() | views::chunk(9)*/; }
@@ -72,7 +42,7 @@ namespace sudoku
         {
             return views::chunk(3) | views::chunk(9) 
                  //| ranges::for_each([](auto&& rng) { return std::move(rng) | chunk(3) | interleave(); }) 
-                 /*| views::join()*/ | views::chunk(9);
+                 /*| views::join*/ | views::chunk(9);
         }
     }
 

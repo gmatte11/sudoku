@@ -9,7 +9,7 @@ add_executable (sudoku ${SRCS})
 target_include_directories(sudoku PUBLIC ../nanorange ../include)
 
 if (WIN32)
-    target_compile_options(sudoku PUBLIC /std:c++latest /Z7 /permissive- /await)
+    target_compile_options(sudoku PUBLIC /std:c++latest /Z7 /permissive-)
 else()
     target_compile_options(sudoku PUBLIC -std=c++17)
 endif()
