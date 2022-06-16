@@ -5,9 +5,9 @@
    https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
 */
 
-namespace sudoku
+namespace sudoku::views
 {
-#if 0
+#if USE_RANGEV3
     // In:  Range<T>
     // Out: Range<Range<T>>, where each inner range has $n$ elements.
     //                       The last range may have fewer.
@@ -231,9 +231,6 @@ namespace sudoku
         };
     }
 
-    namespace views 
-    {
-        NANO_INLINE_VAR(detail::chunk_view_fn, chunk);
-    }
+    NANO_INLINE_VAR(detail::chunk_view_fn, chunk);
 #endif
 }

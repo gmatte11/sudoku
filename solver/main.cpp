@@ -15,13 +15,13 @@ constexpr const char *LINE_SEP = "-------------------------";
 
 void print(Grid const& grid)
 {
-    for (auto lines : grid.chars() | views::rows() | views::chunk(3) /*| ranges::views::split('-')*/)
+    for (auto lines : grid.chars() | views::rows() | views::chunk(3))
     {
         std::cout << LINE_SEP << '\n';
         for (auto&& line : lines)
         {
             std::cout << "| ";
-            for (char c : std::move(line) /*| views::chunk(3) /*| views::join()*/) 
+            for (char c : std::move(line) | views::chunk(3) | views::join_with('|')) 
             { 
                 std::cout << c << ' '; 
             }
