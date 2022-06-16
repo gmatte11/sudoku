@@ -1,2 +1,3 @@
 # sudoku
-Mostly a project to explore range-v3.
+Mostly a project to explore C++20
+ranges, coroutine, concepts...
