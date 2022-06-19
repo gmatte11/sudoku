@@ -1,175 +1,71 @@
 #pragma once
-#include <nanorange.hpp>
 
-#include <coroutine>
+#include <ranges>
+#include <iterator>
+#include <concepts>
 
 #define USE_RANGEV3 0
-#define USE_NANORANGE 1
-#define USE_STDRANGE 0
+#define USE_NANORANGE 0
+#define USE_STDRANGE 1
 
-namespace ranges = nano::ranges;
-namespace rng = ranges;
-
-namespace sudoku::views 
+namespace ranges
 {
-    using namespace nano::views;
+    using namespace std::ranges;
+    using namespace std::ranges::views;
 
     namespace detail
     {
+        template <typename>
+        inline constexpr bool pipeable_v = false;
+
         template <typename T>
-        struct range_generator
+        concept pipeable = pipeable_v<T>;
+
+        template <pipeable LHS, pipeable RHS>
+        struct piping
         {
-            using value_type = std::remove_cvref_t<T>;
-
-            struct promise_type;
-            using handle_type = std::coroutine_handle<promise_type>;
-
-            struct promise_type
+            constexpr piping(LHS&& lhs, RHS&& rhs)
+                : lhs_(std::move(lhs))
+                , rhs_(std::move(rhs))
             {
-                value_type value_{};
-                bool has_value_ = false;
-                std::exception_ptr ex_;
-
-                range_generator get_return_object()
-                {
-                    return range_generator(handle_type::from_promise(*this));
-                }
-
-                std::suspend_always initial_suspend() { return {}; }
-                std::suspend_always final_suspend() noexcept { return {}; }
-
-                void unhandled_exception() { ex_ = std::current_exception(); }
-
-                template <std::convertible_to<T> From>
-                std::suspend_always yield_value(From&& from)
-                {
-                    value_ = std::forward<From>(from);
-                    has_value_ = true;
-                    return {};
-                }
-
-                void return_void()
-                {
-                    has_value_ = false;
-                };
-
-                value_type get_value()
-                {
-                    return std::move(value_);
-                }
-
-                bool done() const
-                {
-                    return !has_value_;
-                }
-            };
-
-            struct iterator
-            {
-                using value_type = value_type;
-                using iterator_category = std::input_iterator_tag;
-                using difference_type = std::ptrdiff_t;
-
-                iterator() = default;
-                iterator(range_generator& gen) : gen_(&gen) {}
-
-                value_type operator*() const
-                {
-                    if (gen_)
-                        return gen_->h_.promise().get_value();
-                    return {};
-                }
-
-                iterator& operator++()
-                {
-                    if (gen_ && gen_->h_)
-                        gen_->h_.resume();
-                    return *this;
-                }
-
-                iterator& operator++(int)
-                {
-                    return ++(*this);
-                }
-
-                bool operator==(rng::default_sentinel_t) const
-                {
-                    return gen_ ? gen_->h_.promise().done() : true;
-                }
-
-            private:
-                range_generator* gen_{};
-            };
-
-            handle_type h_;
-
-#if USE_NANORANGE
-            range_generator() = default; // for nano::ranges::view
-#endif
-            range_generator(handle_type h) : h_(h) {}
-            ~range_generator() { h_.destroy(); }
-
-            explicit operator bool()
-            {
-                fill();
-                return !h_.done();
             }
 
-            T operator()()
+            template <viewable_range R>
+            constexpr auto operator()(R&& r)
             {
-                fill();
-                full_ = false;
-                return std::move(h_.promise().value_);
-            }
-
-            iterator begin()
-            {
-                auto it = iterator(*this);
-                return ++it;
-            }
-
-            rng::default_sentinel_t end()
-            {
-                return rng::default_sentinel_t{};
+                return rhs_(lhs_(std::move(r)));
             }
 
         private:
-            bool full_ = false;
-
-            void fill()
-            {
-                if (!full_)
-                {
-                    h_();
-                    if (h_.promise().ex_)
-                        std::rethrow_exception(h_.promise().ex_);
-                    full_ = true;
-                }
-            }
+            LHS lhs_;
+            RHS rhs_;
         };
-    }
 
-    // join_with not available in nanoranges
-    template <typename R, typename T>
-    inline detail::range_generator<T> join_with(R&& r, T&& t)
-    {
-        bool first = true;
-        for (auto&& sub : r)
+        template <typename LHS, typename RHS>
+        inline constexpr bool pipeable_v<piping<LHS, RHS>> = true;
+
+        template <typename F>
+        struct piped : F
         {
-            if (!first)
-                co_yield t;
-            first = false;
+            constexpr explicit piped(F&& f) : F(std::move(f)) {}
+        };
 
-            for (auto &&v : sub)
-                co_yield static_cast<T>(v);
+        template <typename F>
+        inline constexpr bool pipeable_v<piped<F>> = true;
+
+        template <viewable_range R, pipeable F>
+            requires (!pipeable<std::remove_cvref_t<R>>)
+        constexpr auto operator|(R&& lhs, F&& rhs)
+        {
+            return std::move(rhs)(std::move(lhs));
+        }
+
+        template <pipeable LHS, pipeable RHS>
+        constexpr auto operator|(LHS&& lhs, RHS&& rhs)
+        {
+            return piping(std::move(lhs), std::move(rhs));
         }
     }
+};
 
-    template <typename T>
-    inline auto join_with(T&& t)
-    {
-#if USE_NANORANGE
-        return ranges::detail::rao_proxy{[t = std::move(t)](auto&& r){ return join_with(r, t); }};
-#endif
-    }
-}
+namespace rng = ranges;

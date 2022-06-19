@@ -1,81 +1,23 @@
 #pragma once
 #include "ranges.h"
-#include <cstdlib>
-/* Taken from Eric Niebler's Calendar example.
-   https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
-*/
 
-namespace sudoku::views
+namespace ranges
 {
-#if USE_RANGEV3
-    // In:  Range<T>
-    // Out: Range<Range<T>>, where each inner range has $n$ elements.
-    //                       The last range may have fewer.
-    template<class Rng>
-    class chunk_view : public ranges::view_interface<chunk_view<Rng>, Rng> {
-        CONCEPT_ASSERT(ranges::ForwardRange<Rng>());
-        ranges::range_difference_type_t<Rng> n_;
-        friend ranges::range_access;
-        class adaptor;
-        adaptor begin_adaptor() {
-            return adaptor{n_, ranges::end(this->base())};
-        }
-    public:
-        chunk_view() = default;
-        chunk_view(Rng rng, ranges::range_difference_type_t<Rng> n)
-          : chunk_view::view_adaptor(std::move(rng)), n_(n)
-        {}
-    };
-
-    template<class Rng>
-    class chunk_view<Rng>::adaptor : public ranges::adaptor_base {
-        ranges::range_difference_type_t<Rng> n_;
-        ranges::sentinel_t<Rng> end_;
-    public:
-        adaptor() = default;
-        adaptor(ranges::range_difference_type_t<Rng> n, ranges::sentinel_t<Rng> end)
-          : n_(n), end_(end)
-        {}
-        auto read(ranges::iterator_t<Rng> it) const {
-            return ranges::view::take(ranges::make_iterator_range(std::move(it), end_), n_);
-        }
-        void next(ranges::iterator_t<Rng> &it) {
-            ranges::advance(it, n_, end_);
-        }
-        void prev() = delete;
-        void distance_to() = delete;
-    };
-
-    // In:  Range<T>
-    // Out: Range<Range<T>>, where each inner range has $n$ elements.
-    //                       The last range may have fewer.
-    inline auto chunk(std::size_t n) {
-        using namespace ranges;
-        return make_pipeable([=](auto&& rng) {
-            using Rng = decltype(rng);
-            return chunk_view<view::all_t<Rng>>{
-                view::all(std::forward<Rng>(rng)),
-                static_cast<ranges::range_difference_type_t<Rng>>(n)};
-        });
-    }
-#endif
-
-#if USE_NANORANGE
-    template <typename V>
-    struct chunk_view : ranges::view_interface<chunk_view<V>>
+    template <rng::view V>
+    struct chunk_view : rng::view_interface<chunk_view<V>>
     {
-        using diff_t = ranges::range_difference_t<V>;
+        using diff_t = rng::range_difference_t<V>;
 
         template <bool Const>
         struct iterator
         {
             using base_t = std::conditional_t<!Const, V, const V>;
-            using base_it = ranges::iterator_t<base_t>;
+            using base_it = rng::iterator_t<base_t>;
 
-            using iterator_category = ranges::random_access_iterator_tag;
+            using iterator_category = std::random_access_iterator_tag;
 
-            using value_type = ranges::subrange<base_it>;
-            using difference_type = ranges::iter_difference_t<base_it>;
+            using value_type = rng::subrange<base_it>;
+            using difference_type = std::iter_difference_t<base_it>;
             using pointer = void;
             using reference = value_type;
 
@@ -96,6 +38,7 @@ namespace sudoku::views
             // TODO: negative numbers
             constexpr iterator& operator+=(difference_type n) { i_ = next(n); return *this; }
             constexpr iterator operator+(difference_type n) const { return iterator{base_, next(n), n_}; }
+            friend constexpr iterator operator+(difference_type n, const iterator& it) { return it + n; } 
             constexpr iterator& operator-=(difference_type n) { i_ = prev(n); return *this; }
             constexpr iterator operator-(difference_type n) const { return iterator{base_, prev(n), n_}; }
 
@@ -107,7 +50,7 @@ namespace sudoku::views
 
             constexpr value_type operator*() const
             { 
-                return ranges::subrange(i_, next());
+                return rng::subrange(i_, next());
             }
 
             constexpr value_type operator[](difference_type n) const
@@ -115,7 +58,6 @@ namespace sudoku::views
                 return *(*this + n);
             }
             
-            // makes nano::detail::detail::weakly_equality_comparable_with happy for common_ranges
             constexpr bool operator==(iterator const& rhs) const 
             {
                 return i_ == rhs.i_;
@@ -141,24 +83,21 @@ namespace sudoku::views
                 return std::strong_ordering::equal;
             }
 
-            constexpr auto operator<=>(ranges::sentinel_t<base_t>) const 
+            constexpr auto operator<=>(rng::sentinel_t<base_t>) const 
             {
                 done() ? std::strong_ordering::equal : std::strong_ordering::less;
             }
 
         private:
-            constexpr base_it next(difference_type i = 1) const { return ranges::next(i_, i * n_, ranges::end(*base_)); }
-            constexpr base_it prev(difference_type i = 1) const { return ranges::prev(i_, i * n_, ranges::begin(*base_)); }
+            constexpr base_it next(difference_type i = 1) const { return rng::next(i_, i * n_, rng::end(*base_)); }
+            constexpr base_it prev(difference_type i = 1) const { return rng::prev(i_, i * n_, rng::begin(*base_)); }
 
-            constexpr bool done() const { return base_ == nullptr || i_ == ranges::end(*base_); }
+            constexpr bool done() const { return base_ == nullptr || i_ == rng::end(*base_); }
 
             base_t* base_ = nullptr;
             base_it i_;
             difference_type n_ = 0;
         };
-
-        static_assert(ranges::view<V>);
-        static_assert(ranges::input_range<V>);
 
         constexpr chunk_view() = default;
 
@@ -172,28 +111,28 @@ namespace sudoku::views
 
         constexpr auto begin()
         {
-            return iterator<false>{&base_, ranges::begin(base_), count_};
+            return iterator<false>{&base_, rng::begin(base_), count_};
         }
 
         constexpr auto begin() const
         {
-            return iterator<true>{&base_, ranges::cbegin(base_), count_};
+            return iterator<true>{&base_, rng::begin(base_), count_};
         }
 
         constexpr auto end() 
         { 
-            if constexpr (ranges::common_range<V>)
-                return iterator<false>{&base_, ranges::end(base_), count_};
+            if constexpr (rng::common_range<V>)
+                return iterator<false>{&base_, rng::end(base_), count_};
             else
-                return ranges::end(base_);
+                return rng::end(base_);
         }
 
         constexpr auto end() const 
         { 
-            if constexpr (ranges::common_range<V>)
-                return iterator<true>{&base_, ranges::end(base_), count_};
+            if constexpr (rng::common_range<V>)
+                return iterator<true>{&base_, rng::end(base_), count_};
             else
-                return ranges::end(base_);
+                return rng::end(base_);
         }
 
     private:
@@ -201,9 +140,39 @@ namespace sudoku::views
         diff_t count_ = 1;
     };
 
-    template <typename R>
-    chunk_view(R&&, ranges::range_difference_t<R>) -> chunk_view<ranges::all_view<R>>;
+    template <rng::viewable_range R>
+    chunk_view(R&&, rng::range_difference_t<R>) -> chunk_view<rng::all_t<R>>;
 
+    namespace detail
+    {
+        struct chunk_view_fn
+        {
+            template <std::integral C>
+            constexpr auto operator()(C count) const
+            {
+                return rng::detail::piped
+                {
+                    [count](auto&& r) mutable
+                    {
+                        return chunk_view(std::move(r), count);
+                    }
+                };
+            }
+
+            template <rng::viewable_range R, std::integral C>
+            constexpr auto operator()(R&& r, C count) const
+            {
+                return chunk_view(std::move(r), count);
+            }
+        };
+    }
+
+    inline namespace views
+    {
+        inline constexpr detail::chunk_view_fn chunk{};
+    }
+
+#if USE_NANORANGE
     namespace detail
     {
         struct chunk_view_fn
@@ -211,7 +180,7 @@ namespace sudoku::views
             template <typename C>
             constexpr auto operator()(C&& count) const
             {
-                return ranges::detail::rao_proxy{
+                return rng::detail::rao_proxy{
                     [count](auto&& r) mutable
 #ifndef NANO_MSVC_LAMBDA_PIPE_WORKAROUND
                         -> decltype(chunk_view{std::forward<decltype(r)>(r), std::move(count)})
@@ -223,7 +192,7 @@ namespace sudoku::views
             }
 
             template <typename R>
-            constexpr auto operator()(R&& r, ranges::range_difference_t<R> count) const
+            constexpr auto operator()(R&& r, rng::range_difference_t<R> count) const
             {
                 return chunk_view(std::forward<R>(r), count);
             }

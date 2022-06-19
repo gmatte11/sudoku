@@ -8,8 +8,8 @@ add_executable (sudoku ${SRCS})
 
 target_include_directories(sudoku PUBLIC ../nanorange ../include)
 
-if (WIN32)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(sudoku PUBLIC /std:c++latest /Z7 /permissive-)
 else()
-    target_compile_options(sudoku PUBLIC -std=c++17)
+    target_compile_options(sudoku PUBLIC -std=c++20)
 endif()
