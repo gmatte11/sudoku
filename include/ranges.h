@@ -3,6 +3,7 @@
 #include <ranges>
 #include <iterator>
 #include <concepts>
+#include <algorithm>
 
 #define USE_RANGEV3 0
 #define USE_NANORANGE 0
@@ -11,7 +12,11 @@
 namespace ranges
 {
     using namespace std::ranges;
-    using namespace std::ranges::views;
+
+    inline namespace views
+    {
+        using namespace std::ranges::views;
+    }
 
     namespace detail
     {

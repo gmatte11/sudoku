@@ -1,10 +1,7 @@
 #pragma once
 #include "ranges.h"
-/* Taken from Eric Niebler's Calendar example.
-   https://github.com/ericniebler/range-v3/blob/master/example/calendar.cpp
-*/
 
-namespace sudoku
+namespace ranges
 {
 #if USE_RANGEV3
     // Flattens a range of ranges by iterating the inner
@@ -57,37 +54,119 @@ namespace sudoku
                 view::all(std::forward<Rngs>(rngs)));
         });
     }
-#endif
-
-#if USE_NANORANGE && 0
-    template <typename R>
-    struct interleave_view : ranges::view_interface<interleave_view<R>>
+    
+#elif (0)
+    template <rng::forward_range V>
+        requires rng::view<V> && rng::sized_range<V> && rng::input_range<rng::range_reference_t<V>> && rng::sized_range<rng::range_reference_t<V>>
+    struct interleave_view : rng::view_interface<interleave_view<V>>
     {
-        static_assert(ranges::view<R>);
+        struct iterator
+        {
+            using base_t = const V;
+            using parent_t = const interleave_view;
+
+            using outer_it = rng::iterator_t<base_t>;
+            using inner_it = rng::iterator_t<rng::range_reference_t<base_t>>;
+
+            using iterator_category = std::forward_iterator_tag;
+            using value_type = std::invoke_result_t<(decltype(&iterator::current)>;
+            using difference_type = std::ptrdiff_t;
+            using pointer = void;
+            using reference = void;
+
+            constexpr iterator& operator++() { next(); return *this; }
+
+            constexpr iterator() = default;
+            constexpr iterator(parent_t* parent)
+                : parent_(parent)
+            {
+                if (parent_ != nullptr)
+                {
+                    auto sizes = rng::transform_view(*base(), [](auto&& r){ return rng::size(r); });
+                    max_idx_ = rng::min(sizes);
+                }
+            }
+
+            constexpr value_type operator*() const
+            {
+                return current();
+            }
+
+            constexpr bool operator==(const iterator& rhs) const
+            {
+                if (parent_ != rhs.parent_)
+                    return false;
+
+                if (parent_ == nullptr)
+                    return true;
+
+                return idx_ == rhs.idx_;
+            }
+
+        private:
+            constexpr base_t* base() const
+            {
+                if (parent_)
+                    return &parent_->base_;
+                return {};
+            }
+
+            constexpr void next(rng::range_difference_t<base_t> i)
+            {
+                idx_ = std::max(idx_ + i, max_idx_);
+            }
+
+            constexpr auto current() const
+            {
+                return rng::transform_view(*base(), 
+                    [idx = idx_](auto&& inner) 
+                    {  
+                        auto it = std::next(inner.begin(), idx);
+                        return *it;
+                    });
+            }
+
+            rng::range_difference_t<base_t> idx_{};
+            rng::range_difference_t<base_t> max_idx_{};
+            parent_t* parent_{};
+        };
 
         interleave_view() = default;
-        constexpr interleave_view(R base) : base_(base) {}
+        constexpr interleave_view(V base) : base_(base) {}
 
-        constexpr auto begin() const { return ranges::begin(base_); }
-        constexpr auto end() const { return ranges::end(base_); }
+        constexpr V base() const { return base_; }
+
+        constexpr auto begin() const { return iterator(this); }
+        constexpr auto end() const { return iterator(nullptr); }
         constexpr auto size() const { return ranges::size(base_); }
 
     private:
-        R base_;
+        V base_;
     };
 
-    namespace views
-    {
-        template <typename R>
-        constexpr auto interleave(R&& r)
-        {
-            return interleave_view{std::forward<R>(r)};
-        }
+    template <typename R>
+    interleave_view(R&&) -> interleave_view<all_t<R>>;
 
-        constexpr auto interleave()
+    namespace detail
+    {
+        struct interleave_fn
         {
-            return ranges::detail::rao_proxy{[](auto&& r){ return interleave_view{std::forward<decltype(r)>(r)}; }};
-        }
+            template <typename R>
+            constexpr auto operator()(R&& r) const
+            {
+                return interleave_view{std::forward<R>(r)};
+            }
+
+            constexpr auto operator()() const
+            {
+                return piped{[](auto&& r) { return interleave_view{std::forward<decltype(r)>(r)}; }};
+            }
+        };
+    }
+
+    inline namespace views
+    {
+        constexpr static detail::interleave_fn interleave{};
     }
 #endif
 }

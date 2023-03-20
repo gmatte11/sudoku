@@ -101,9 +101,9 @@ namespace ranges
 
         constexpr chunk_view() = default;
 
-        constexpr chunk_view(V base, diff_t count)
+        constexpr chunk_view(V base, diff_t n)
             : base_(std::move(base))
-            , count_(count)
+            , count_(n)
         {
         }
 

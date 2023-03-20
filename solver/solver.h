@@ -2,16 +2,15 @@
 
 #include "grid.h"
 
-namespace sudoku
+class Solver
 {
-   class Solver
-    {
-    public:
-        Solver(Grid *grid);
+public:
+    Solver(Grid* grid);
 
-        void solve_step();
+    void solve_step();
 
-    private:
-        Grid *grid_;
-    };
-}
+    bool is_solved() const;
+
+private:
+    Grid* grid_;
+};

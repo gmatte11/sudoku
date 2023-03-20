@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 #include "ranges.h"
 #include "chunk_view.h"
+//#include "interleave_view.h"
 #include "join_with_view.h"
 
 #include <array>
@@ -60,12 +61,9 @@ TEST_CASE("interleave", "[views]")
         std::vector{'7', '8', '9' },
     };
 
-    auto v = interleave(matrix);
-    CHECK_THAT(to_string(v), Equals("147258369"s));
-
-    auto blocks = matrix | interleave() | chunk(3);
+    auto v = rng::interleave(matrix);
     
-    auto it = blocks.begin();
+    auto it = v.begin();
     CHECK_THAT(to_string(*it), Equals("147"s));
 }
 #endif
