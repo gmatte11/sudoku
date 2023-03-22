@@ -1,17 +1,12 @@
-#include <array>
-#include <string>
-#include <vector>
-
-#include <concepts>
-
-#include <fmt/format.h>
-
 #include "ranges.h"
 #include "grid.h"
 #include "solver.h"
 
-namespace rng = ranges;
-namespace views = rng::views;
+#include <fmt/format.h>
+
+#include <array>
+#include <string>
+
 
 void print(Grid const& grid)
 {
@@ -53,29 +48,29 @@ int main(int argc, char *argv[])
     fmt::print("initial grid\n");
     print(grid);
 
-    Solver solver(&grid);
+    Solver solver(grid);
 
-    //while (!solver.is_solved())
-    //    solver.solve_step();
+    while (!solver.is_solved())
+        solver.solve_step();
 
-    fmt::print("final grid\n");
+    fmt::print("\nfinal grid\n");
     print(grid);
 
+    fmt::print("\nsolved in {} steps.\n", solver.solve_steps_);
+
+#if 0
     auto print_zone = [] (auto&& r, std::string_view name, int idx) 
     {
         constexpr auto format = "{} {}: | {} {} {} | {} {} {} | {} {} {} |\n";
         fmt::print(format, name, idx, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]);
     };
 
-    auto as_char = [](auto& c){ return c.as_char(); };
+    auto as_char = [](auto& c){ Grid::Cell const& cell = c; return cell.as_char(); };
 
-    print_zone(grid.row(0) | rng::views::transform(as_char), "row", 0);
-    print_zone(grid.col(2) | rng::views::transform(as_char), "col", 2);
-    //print_zone(grid.zone(0) | rng::views::transform(as_char), "zone", 0);
-
-    auto zone = ((grid.cells() | rng::chunk(3) | rng::stride(3) | rng::chunk(3))[0] | rng::join) | rng::take(9);
-    print_zone(zone | rng::views::transform(as_char), "test", 0);
-
+    print_zone(grid.row(0) | ranges::views::transform(as_char), "row", 0);
+    print_zone(grid.col(2) | ranges::views::transform(as_char), "col", 2);
+    print_zone(grid.zone(0) | ranges::views::transform(as_char), "zone", 0);
+#endif
 
     return 0;
 }

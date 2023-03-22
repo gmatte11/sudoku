@@ -1,6 +1,10 @@
 #include "solver.h"
+#include "grid.h"
+
+#include <fmt/format.h>
 
 #include <iterator>
+
 
 namespace 
 {
@@ -36,7 +40,7 @@ namespace
             }
         }
     }
-
+    
     bool check_unique(int idx, uint8_t value, Grid& grid)
     {
         const int row_idx = idx / 9;
@@ -45,83 +49,71 @@ namespace
         const int col_idx = idx % 9;
         auto col = grid.col(col_idx);
 
-        constexpr std::array<int, 9> zone_indexes = { 0, 3, 6, 27, 30, 33, 54, 57, 60 };
-        std::array<int, 9> indexers = { idx, idx - 1, idx - 2, idx - 9, idx - 10, idx - 11, idx - 18, idx - 19, idx - 20 };
+        auto zone = grid.zone_of(grid.cells()[idx]);
 
-        const int zone_idx = (int)std::distance(zone_indexes.begin(), rng::find_first_of(zone_indexes, indexers));
-        auto zone = grid.zone(zone_idx);
+        auto check = [=](Grid::Cell const& cell) { return cell.val() == value; };
 
-        auto check = [=](Cell& cell) { return cell.val() == value; };
-
-        return rng::none_of(row, check)
-            && rng::none_of(col, check)
-            && rng::none_of(zone, check);
+        return ranges::none_of(row, check)
+            && ranges::none_of(col, check)
+            && ranges::none_of(zone.value(), check);
     }
 
-    auto recursive_backtrack(int idx, Grid& grid)
+    int recursive_backtrack(int idx, Grid& grid)
     {
-        auto cells = grid.cells();
-        auto rev = std::ranges::views::reverse(rng::take_view(cells, idx));
-        auto prev = std::ranges::find_if(rev, [](Cell& cell){ return !cell.fixed_; });
-
-        if (prev == cells.rend())
-            return prev.base();
-
-        Cell& cell = *prev;
-        int prev_idx = (int)std::distance(cells.begin(), prev.base()) - 1;
+        Cell& cell = grid.cells()[idx];
 
         const int first = cell.val();
-        for (uint8_t i = 1; i < 9; ++i)
+        for (uint8_t val = cell.val() + 1; val <= 9; ++val)
         {
-            const uint8_t val = ((first + i) % 9) + 1;
-            if (check_unique(prev_idx, val, grid))
+            if (check_unique(cell.idx_, val, grid))
             {
                 cell.set(val);
-                return prev.base();
+                return idx;
             }
         }
 
         // recurse
         cell.set(0);
-        return recursive_backtrack(prev_idx, grid);
+        return recursive_backtrack(grid.prev_idx(cell.idx_), grid);
     }
+
 }
 
-Solver::Solver(Grid* grid) : grid_(grid)
+Solver::Solver(Grid& grid) : grid_(grid)
 {
     //init_solvermasks(grid->rows());
     //init_solvermasks(grid->columns());
     //init_solvermasks(grid->zones()); //TODO
+
+    next_idx_ = grid_.next_idx(-1);
 }
 
 void Solver::solve_step()
 {
-    using Cell = Grid::Cell;
+    Grid::Cell& cell = grid_.cells()[next_idx_];
 
-    auto val_proj = [](auto& c) { return c.val(); };
-    auto cells = grid_->cells();
-
-    auto next = std::ranges::find(cells, 0, val_proj);
-
-    if (next == cells.end())
-        return;
-
-    int idx = (int)std::distance(cells.begin(), next) - 1;
-
+    bool found = false;
     for (uint8_t v = 1; v <= 9; ++v)
     {
-        if (check_unique(idx, v, *grid_))
+        if (check_unique(cell.idx_, v, grid_))
         {
-            next->set(v);
-            return;
+            cell.set(v);
+            found = true;
+            break;
         }
     }
 
     // backtracking
-    recursive_backtrack(idx, *grid_);
+    if (!found)
+    {
+        next_idx_ = recursive_backtrack(grid_.prev_idx(cell.idx_), grid_);
+    }
+
+    next_idx_ = grid_.next_idx(next_idx_);
+    ++solve_steps_;
 }
 
 bool Solver::is_solved() const
 {
-    return std::ranges::none_of(grid_->cells(), [](Grid::Cell const& c) { return c.val() == 0; });
+    return next_idx_ == -1;
 }
