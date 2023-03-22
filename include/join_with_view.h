@@ -1,14 +1,14 @@
 #pragma once
-#include "ranges.h"
+#include "ranges_util.h"
 
 namespace ranges
 {
-    template<rng::input_range V, rng::forward_range Pattern>
-        requires ranges::view<V> && ranges::input_range<ranges::range_reference_t<V>> && ranges::view<Pattern>
-    struct join_with_view : public rng::view_interface<join_with_view<V, Pattern>>
+    template<input_range V, forward_range Pattern>
+        requires view<V> && input_range<range_reference_t<V>> && view<Pattern>
+    struct join_with_view : public view_interface<join_with_view<V, Pattern>>
     {
         using sentinel = std::default_sentinel_t;
-        using value_type = ranges::range_value_t<ranges::range_reference_t<V>>;
+        using value_type = range_value_t<range_reference_t<V>>;
 
         template <bool Const>
         struct iterator
@@ -16,21 +16,21 @@ namespace ranges
             using base_t = std::conditional_t<!Const, V, const V>;
             using parent_t = std::conditional_t<!Const, join_with_view, const join_with_view>;
 
-            using iterator_category = typename rng::iterator_t<base_t>::iterator_category;
+            using iterator_category = typename iterator_t<base_t>::iterator_category;
 
-            using value_type = ranges::range_value_t<ranges::range_reference_t<base_t>>;
+            using value_type = range_value_t<range_reference_t<base_t>>;
             using difference_type = std::ptrdiff_t;
             using pointer = void;
-            using reference = rng::range_reference_t<rng::range_reference_t<base_t>>;
+            using reference = range_reference_t<range_reference_t<base_t>>;
 
             constexpr iterator() = default;
 
-            constexpr iterator(parent_t* parent, rng::iterator_t<base_t> it) 
+            constexpr iterator(parent_t* parent, iterator_t<base_t> it) 
                 : parent_(parent)
                 , outer_it_(it)
             {
-                if (outer_it_ != rng::end(parent->base_))
-                    inner_it_ = rng::begin(*outer_it_);
+                if (outer_it_ != ranges::end(parent->base_))
+                    inner_it_ = ranges::begin(*outer_it_);
             }
 
             constexpr iterator& operator++() { next(); return *this; }
@@ -49,10 +49,10 @@ namespace ranges
                     return false;
 
                 if (parent_ == nullptr)
-                    return rhs.parent_ == nullptr || rhs.outer_it_ == rng::end(rhs.parent_->base_);
+                    return rhs.parent_ == nullptr || rhs.outer_it_ == ranges::end(rhs.parent_->base_);
 
-                if (outer_it_ == rng::end(parent_->base_))
-                    return rhs.parent_ == nullptr || rhs.outer_it_ == rng::end(rhs.parent_->base_);
+                if (outer_it_ == ranges::end(parent_->base_))
+                    return rhs.parent_ == nullptr || rhs.outer_it_ == ranges::end(rhs.parent_->base_);
 
                 return outer_it_ == rhs.outer_it_
                     && inner_it_ == rhs.inner_it_
@@ -60,38 +60,38 @@ namespace ranges
             }
 
             constexpr bool operator==(sentinel) const
-                requires (!rng::common_range<V>)
+                requires (!common_range<V>)
             {
-                return parent_ == nullptr || outer_it_ == rng::end(parent_->base_);
+                return parent_ == nullptr || outer_it_ == ranges::end(parent_->base_);
             }
 
         private:
             constexpr void next()
             {
-                if (parent_ != nullptr && outer_it_ != rng::end(parent_->base_))
+                if (parent_ != nullptr && outer_it_ != ranges::end(parent_->base_))
                 {
-                    if (inner_it_ != rng::end(*outer_it_))
+                    if (inner_it_ != ranges::end(*outer_it_))
                     {
                         ++inner_it_;
-                        if (inner_it_ == rng::end(*outer_it_))
+                        if (inner_it_ == ranges::end(*outer_it_))
                         {
-                            if (std::next(outer_it_) == rng::end(parent_->base_))
+                            if (ranges::next(outer_it_) == ranges::end(parent_->base_))
                             {
                                 ++outer_it_;
                                 return;
                             }
-                            pattern_it_ = rng::begin(parent_->pattern_);
+                            pattern_it_ = ranges::begin(parent_->pattern_);
                         }
                     }
                     else 
                     {
                         ++pattern_it_;
-                        if (pattern_it_ == rng::end(parent_->pattern_))
+                        if (pattern_it_ == ranges::end(parent_->pattern_))
                         {
                             ++outer_it_;
-                            if (outer_it_ == rng::end(parent_->base_))
+                            if (outer_it_ == ranges::end(parent_->base_))
                                 return;
-                            inner_it_ = rng::begin(*outer_it_);
+                            inner_it_ = ranges::begin(*outer_it_);
                         }
                     }
                 }
@@ -99,9 +99,9 @@ namespace ranges
 
             constexpr value_type current() const
             {
-                if (parent_ != nullptr && outer_it_ != rng::end(parent_->base_))
+                if (parent_ != nullptr && outer_it_ != ranges::end(parent_->base_))
                 {
-                    if (inner_it_ != rng::end(*outer_it_))
+                    if (inner_it_ != ranges::end(*outer_it_))
                         return *inner_it_;
                     else 
                         return *pattern_it_;
@@ -110,9 +110,9 @@ namespace ranges
                 return {};
             }
 
-            rng::iterator_t<base_t> outer_it_{};
-            rng::iterator_t<rng::range_value_t<base_t>> inner_it_{};
-            rng::iterator_t<const Pattern> pattern_it_{}; 
+            iterator_t<base_t> outer_it_{};
+            iterator_t<range_value_t<base_t>> inner_it_{};
+            iterator_t<const Pattern> pattern_it_{}; 
             const parent_t* parent_{};
         };
 
@@ -124,30 +124,30 @@ namespace ranges
         {
         }
 
-        template <rng::input_range R>
-            requires std::constructible_from<V, all_t<R>> &&
-                std::constructible_from<Pattern, rng::single_view<value_type>>
+        template <input_range R>
+            requires std::constructible_from<V, views::all_t<R>> &&
+                std::constructible_from<Pattern, single_view<value_type>>
         constexpr join_with_view(R&& r, value_type e)
-            : base_(rng::all(std::forward<R>(r)))
-            , pattern_(rng::single_view<value_type>(std::move(e)))
+            : base_(views::all(std::forward<R>(r)))
+            , pattern_(single_view<value_type>(std::move(e)))
         {
         }
 
         constexpr auto begin()
         {
-            return iterator<false>(this, rng::begin(base_));
+            return iterator<false>(this, ranges::begin(base_));
         }
 
         constexpr auto begin() const
         {
-            return iterator<true>(this, rng::begin(base_));
+            return iterator<true>(this, ranges::begin(base_));
         }
 
         constexpr auto end()
         {
-            if constexpr (rng::common_range<V>)
+            if constexpr (common_range<V>)
             {
-                return iterator<false>(this, rng::end(base_));
+                return iterator<false>(this, ranges::end(base_));
             }
             else
             {
@@ -157,9 +157,9 @@ namespace ranges
 
         constexpr auto end() const
         {
-            if constexpr (rng::common_range<V>)
+            if constexpr (common_range<V>)
             {
-                return iterator<true>(this, rng::end(base_));
+                return iterator<true>(this, ranges::end(base_));
             }
             else
             {
@@ -173,10 +173,10 @@ namespace ranges
     };
 
     template <typename R, typename P>
-    join_with_view(R&&, P&&) -> join_with_view<all_t<R>, all_t<P>>;
+    join_with_view(R&&, P&&) -> join_with_view<views::all_t<R>, views::all_t<P>>;
 
     template <typename R>
-    join_with_view(R&&, rng::range_value_t<rng::range_reference_t<R>>) -> join_with_view<all_t<R>, single_view<rng::range_value_t<rng::range_reference_t<R>>>>;
+    join_with_view(R&&, range_value_t<range_reference_t<R>>) -> join_with_view<views::all_t<R>, single_view<range_value_t<range_reference_t<R>>>>;
 
     namespace detail
     {
@@ -196,7 +196,7 @@ namespace ranges
         };
     }
 
-    inline namespace views
+    namespace views
     {
         inline constexpr detail::join_with_view_fn join_with{};
     }

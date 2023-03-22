@@ -1,22 +1,22 @@
 #pragma once
-#include "ranges.h"
+#include "ranges_util.h"
 
 namespace ranges
 {
-    template <rng::view V>
-    struct chunk_view : rng::view_interface<chunk_view<V>>
+    template <view V>
+    struct chunk_view : view_interface<chunk_view<V>>
     {
-        using diff_t = rng::range_difference_t<V>;
+        using diff_t = range_difference_t<V>;
 
         template <bool Const>
         struct iterator
         {
             using base_t = std::conditional_t<!Const, V, const V>;
-            using base_it = rng::iterator_t<base_t>;
+            using base_it = iterator_t<base_t>;
 
             using iterator_category = std::random_access_iterator_tag;
 
-            using value_type = rng::subrange<base_it>;
+            using value_type = subrange<base_it>;
             using difference_type = std::iter_difference_t<base_it>;
             using pointer = void;
             using reference = value_type;
@@ -50,7 +50,7 @@ namespace ranges
 
             constexpr value_type operator*() const
             { 
-                return rng::subrange(i_, next());
+                return subrange(i_, next());
             }
 
             constexpr value_type operator[](difference_type n) const
@@ -83,16 +83,16 @@ namespace ranges
                 return std::strong_ordering::equal;
             }
 
-            constexpr auto operator<=>(rng::sentinel_t<base_t>) const 
+            constexpr auto operator<=>(sentinel_t<base_t>) const 
             {
                 done() ? std::strong_ordering::equal : std::strong_ordering::less;
             }
 
         private:
-            constexpr base_it next(difference_type i = 1) const { return rng::next(i_, i * n_, rng::end(*base_)); }
-            constexpr base_it prev(difference_type i = 1) const { return rng::prev(i_, i * n_, rng::begin(*base_)); }
+            constexpr base_it next(difference_type i = 1) const { return ranges::next(i_, i * n_, ranges::end(*base_)); }
+            constexpr base_it prev(difference_type i = 1) const { return ranges::prev(i_, i * n_, ranges::begin(*base_)); }
 
-            constexpr bool done() const { return base_ == nullptr || i_ == rng::end(*base_); }
+            constexpr bool done() const { return base_ == nullptr || i_ == ranges::end(*base_); }
 
             base_t* base_ = nullptr;
             base_it i_;
@@ -111,28 +111,28 @@ namespace ranges
 
         constexpr auto begin()
         {
-            return iterator<false>{&base_, rng::begin(base_), count_};
+            return iterator<false>{&base_, ranges::begin(base_), count_};
         }
 
         constexpr auto begin() const
         {
-            return iterator<true>{&base_, rng::begin(base_), count_};
+            return iterator<true>{&base_, ranges::begin(base_), count_};
         }
 
         constexpr auto end() 
         { 
-            if constexpr (rng::common_range<V>)
-                return iterator<false>{&base_, rng::end(base_), count_};
+            if constexpr (common_range<V>)
+                return iterator<false>{&base_, ranges::end(base_), count_};
             else
-                return rng::end(base_);
+                return ranges::end(base_);
         }
 
         constexpr auto end() const 
         { 
-            if constexpr (rng::common_range<V>)
-                return iterator<true>{&base_, rng::end(base_), count_};
+            if constexpr (common_range<V>)
+                return iterator<true>{&base_, ranges::end(base_), count_};
             else
-                return rng::end(base_);
+                return ranges::end(base_);
         }
 
     private:
@@ -140,8 +140,8 @@ namespace ranges
         diff_t count_ = 1;
     };
 
-    template <rng::viewable_range R>
-    chunk_view(R&&, rng::range_difference_t<R>) -> chunk_view<rng::all_t<R>>;
+    template <viewable_range R>
+    chunk_view(R&&, range_difference_t<R>) -> chunk_view<views::all_t<R>>;
 
     namespace detail
     {
@@ -150,7 +150,7 @@ namespace ranges
             template <std::integral C>
             constexpr auto operator()(C count) const
             {
-                return rng::detail::piped
+                return detail::piped
                 {
                     [count](auto&& r) mutable
                     {
@@ -159,7 +159,7 @@ namespace ranges
                 };
             }
 
-            template <rng::viewable_range R, std::integral C>
+            template <viewable_range R, std::integral C>
             constexpr auto operator()(R&& r, C count) const
             {
                 return chunk_view(std::move(r), count);
@@ -167,7 +167,7 @@ namespace ranges
         };
     }
 
-    inline namespace views
+    namespace views
     {
         inline constexpr detail::chunk_view_fn chunk{};
     }
@@ -180,7 +180,7 @@ namespace ranges
             template <typename C>
             constexpr auto operator()(C&& count) const
             {
-                return rng::detail::rao_proxy{
+                return detail::rao_proxy{
                     [count](auto&& r) mutable
 #ifndef NANO_MSVC_LAMBDA_PIPE_WORKAROUND
                         -> decltype(chunk_view{std::forward<decltype(r)>(r), std::move(count)})
@@ -192,7 +192,7 @@ namespace ranges
             }
 
             template <typename R>
-            constexpr auto operator()(R&& r, rng::range_difference_t<R> count) const
+            constexpr auto operator()(R&& r, range_difference_t<R> count) const
             {
                 return chunk_view(std::forward<R>(r), count);
             }

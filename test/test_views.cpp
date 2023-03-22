@@ -10,21 +10,21 @@
 
 using namespace Catch::Matchers;
 
-template <rng::range R>
+template <ranges::range R>
     requires
-        std::is_convertible_v<rng::range_value_t<R>, std::string::value_type>
+        std::is_convertible_v<ranges::range_value_t<R>, std::string::value_type>
 inline std::string to_string(R&& r)
 {
-    if constexpr (rng::common_range<R> && rng::random_access_range<R>)
+    if constexpr (ranges::common_range<R> && ranges::random_access_range<R>)
     {
-        return std::string(rng::begin(r), rng::end(r));
+        return std::string(ranges::begin(r), ranges::end(r));
     }
     else
     {
         std::string s;
 
-        if constexpr (rng::sized_range<R>)
-            s.reserve(rng::size(r));
+        if constexpr (ranges::sized_range<R>)
+            s.reserve(ranges::size(r));
 
         for (auto c : r)
             s += c;
@@ -38,15 +38,15 @@ TEST_CASE("join_with", "[views]")
     using namespace std::literals;
 
     std::vector vec{"a"sv, "b"sv, "c"sv};
-    auto v = rng::join_with(vec, '-');
+    auto v = views::join_with(vec, '-');
 
     using vt = decltype(v);
-    STATIC_REQUIRE(rng::view<vt>);
+    STATIC_REQUIRE(ranges::view<vt>);
 
     CHECK_THAT(to_string(v), Equals("a-b-c"s));
 
-    auto piped = vec | rng::join_with('/');
-    STATIC_REQUIRE(rng::view<decltype(piped)>);
+    auto piped = vec | views::join_with('/');
+    STATIC_REQUIRE(ranges::view<decltype(piped)>);
     CHECK_THAT(to_string(piped), Equals("a/b/c"s));
 }
 
@@ -61,7 +61,7 @@ TEST_CASE("interleave", "[views]")
         std::vector{'7', '8', '9' },
     };
 
-    auto v = rng::interleave(matrix);
+    auto v = ranges::interleave(matrix);
     
     auto it = v.begin();
     CHECK_THAT(to_string(*it), Equals("147"s));

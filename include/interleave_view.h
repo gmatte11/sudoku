@@ -1,5 +1,5 @@
 #pragma once
-#include "ranges.h"
+#include "ranges_util.h"
 
 namespace ranges
 {
@@ -7,12 +7,12 @@ namespace ranges
     // Flattens a range of ranges by iterating the inner
     // ranges in round-robin fashion.
     template<class Rngs>
-    class interleave_view : public ranges::view_facade<interleave_view<Rngs>> {
-        friend ranges::range_access;
-        std::vector<ranges::range_value_type_t<Rngs>> rngs_;
+    class interleave_view : public view_facade<interleave_view<Rngs>> {
+        friend range_access;
+        std::vector<range_value_type_t<Rngs>> rngs_;
         struct cursor;
         cursor begin_cursor() {
-            return {0, &rngs_, ranges::view::transform(rngs_, ranges::begin)};
+            return {0, &rngs_, view::transform(rngs_, begin)};
         }
     public:
         interleave_view() = default;
@@ -24,20 +24,20 @@ namespace ranges
     template<class Rngs>
     struct interleave_view<Rngs>::cursor  {
         std::size_t n_;
-        std::vector<ranges::range_value_type_t<Rngs>> *rngs_;
-        std::vector<ranges::iterator_t<ranges::range_value_type_t<Rngs>>> its_;
+        std::vector<range_value_type_t<Rngs>> *rngs_;
+        std::vector<iterator_t<range_value_type_t<Rngs>>> its_;
         decltype(auto) read() const {
             return *its_[n_];
         }
         void next() {
             if(0 == ((++n_) %= its_.size()))
-                ranges::for_each(its_, [](auto& it){ ++it; });
+                for_each(its_, [](auto& it){ ++it; });
         }
-        bool equal(ranges::default_sentinel) const {
-            return n_ == 0 && its_.end() != ranges::mismatch(its_, *rngs_,
-                std::not_equal_to<>(), ranges::ident(), ranges::end).in1();
+        bool equal(default_sentinel) const {
+            return n_ == 0 && its_.end() != mismatch(its_, *rngs_,
+                std::not_equal_to<>(), ident(), end).in1();
         }
-        CONCEPT_REQUIRES(ranges::ForwardRange<ranges::range_value_type_t<Rngs>>())
+        CONCEPT_REQUIRES(ForwardRange<range_value_type_t<Rngs>>())
         bool equal(cursor const& that) const {
             return n_ == that.n_ && its_ == that.its_;
         }
@@ -56,17 +56,17 @@ namespace ranges
     }
     
 #elif (0)
-    template <rng::forward_range V>
-        requires rng::view<V> && rng::sized_range<V> && rng::input_range<rng::range_reference_t<V>> && rng::sized_range<rng::range_reference_t<V>>
-    struct interleave_view : rng::view_interface<interleave_view<V>>
+    template <forward_range V>
+        requires view<V> && sized_range<V> && input_range<range_reference_t<V>> && sized_range<range_reference_t<V>>
+    struct interleave_view : view_interface<interleave_view<V>>
     {
         struct iterator
         {
             using base_t = const V;
             using parent_t = const interleave_view;
 
-            using outer_it = rng::iterator_t<base_t>;
-            using inner_it = rng::iterator_t<rng::range_reference_t<base_t>>;
+            using outer_it = iterator_t<base_t>;
+            using inner_it = iterator_t<range_reference_t<base_t>>;
 
             using iterator_category = std::forward_iterator_tag;
             using value_type = std::invoke_result_t<(decltype(&iterator::current)>;
@@ -82,8 +82,8 @@ namespace ranges
             {
                 if (parent_ != nullptr)
                 {
-                    auto sizes = rng::transform_view(*base(), [](auto&& r){ return rng::size(r); });
-                    max_idx_ = rng::min(sizes);
+                    auto sizes = transform_view(*base(), [](auto&& r){ return size(r); });
+                    max_idx_ = min(sizes);
                 }
             }
 
@@ -111,14 +111,14 @@ namespace ranges
                 return {};
             }
 
-            constexpr void next(rng::range_difference_t<base_t> i)
+            constexpr void next(range_difference_t<base_t> i)
             {
                 idx_ = std::max(idx_ + i, max_idx_);
             }
 
             constexpr auto current() const
             {
-                return rng::transform_view(*base(), 
+                return transform_view(*base(), 
                     [idx = idx_](auto&& inner) 
                     {  
                         auto it = std::next(inner.begin(), idx);
@@ -126,8 +126,8 @@ namespace ranges
                     });
             }
 
-            rng::range_difference_t<base_t> idx_{};
-            rng::range_difference_t<base_t> max_idx_{};
+            range_difference_t<base_t> idx_{};
+            range_difference_t<base_t> max_idx_{};
             parent_t* parent_{};
         };
 
@@ -138,7 +138,7 @@ namespace ranges
 
         constexpr auto begin() const { return iterator(this); }
         constexpr auto end() const { return iterator(nullptr); }
-        constexpr auto size() const { return ranges::size(base_); }
+        constexpr auto size() const { return size(base_); }
 
     private:
         V base_;
