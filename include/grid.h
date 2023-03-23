@@ -21,15 +21,9 @@ class Grid
 public:
     struct Cell
     {
-        uint8_t idx_;
-        uint8_t val_;
-        uint16_t solvemask_;
-        bool fixed_;
-
-        Cell()
-            : val_(0), fixed_(false), solvemask_(0)
-        {
-        }
+        uint8_t idx_ = 0;
+        uint8_t val_ = 0;
+        bool fixed_ = false;
 
         void init(uint8_t val)
         {
@@ -40,7 +34,6 @@ public:
         void set(uint8_t val)
         {
             val_ = val;
-            solvemask_ = (val == 0) ? 0b111111111 : 0;
         }
 
         char as_char() const { return (val_ != 0) ? val_ + '0' : '_'; }

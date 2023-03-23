@@ -7,8 +7,7 @@
 #include <array>
 #include <string>
 
-
-void print(Grid const& grid)
+void print_grid(Grid const& grid)
 {
     constexpr auto line_fmt = "| {} {} {} | {} {} {} | {} {} {} |\n";
 
@@ -46,7 +45,7 @@ int main(int argc, char *argv[])
     grid.init(test_grid);
 
     fmt::print("initial grid\n");
-    print(grid);
+    print_grid(grid);
 
     Solver solver(grid);
 
@@ -54,7 +53,7 @@ int main(int argc, char *argv[])
         solver.solve_step();
 
     fmt::print("\nfinal grid\n");
-    print(grid);
+    print_grid(grid);
 
     fmt::print("\nsolved in {} steps.\n", solver.solve_steps_);
 

@@ -9,37 +9,6 @@
 namespace 
 {
     using Cell = Grid::Cell;
-
-    template <typename R>
-    uint16_t possibilities(R&& cells)
-    {
-        uint16_t mask = 0b111111111;
-        for (Grid::Cell & c : cells)
-        {
-            if (c.val() > 0)
-            {
-                mask &= ~(1 << (c.val() - 1));
-            }
-        }
-
-        return mask;
-    }
-
-    template <typename V>
-    void init_solvermasks(V groups)
-    {
-        for (auto cells : groups)
-        {
-            uint16_t mask = possibilities(cells);
-            for (Grid::Cell& c : cells)
-            {
-                if (c.val() == 0)
-                {
-                    c.solvemask_ &= mask;
-                }
-            }
-        }
-    }
     
     bool check_unique(int idx, uint8_t value, Grid& grid)
     {
@@ -81,16 +50,12 @@ namespace
 
 Solver::Solver(Grid& grid) : grid_(grid)
 {
-    //init_solvermasks(grid->rows());
-    //init_solvermasks(grid->columns());
-    //init_solvermasks(grid->zones()); //TODO
-
     next_idx_ = grid_.next_idx(-1);
 }
 
 void Solver::solve_step()
 {
-    Grid::Cell& cell = grid_.cells()[next_idx_];
+    Cell& cell = grid_.cells()[next_idx_];
 
     bool found = false;
     for (uint8_t v = 1; v <= 9; ++v)
