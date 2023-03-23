@@ -20,32 +20,29 @@ namespace
 
         auto zone = grid.zone_of(grid.cells()[idx]);
 
-        auto check = [=](Grid::Cell const& cell) { return cell.val() == value; };
+        auto check = [=](Cell const& cell) { return cell.val() == value; };
 
         return ranges::none_of(row, check)
             && ranges::none_of(col, check)
             && ranges::none_of(zone.value(), check);
     }
 
-    int recursive_backtrack(int idx, Grid& grid)
+    int try_set_or_backtrack(Cell& cell, Grid& grid)
     {
-        Cell& cell = grid.cells()[idx];
-
-        const int first = cell.val();
         for (uint8_t val = cell.val() + 1; val <= 9; ++val)
         {
             if (check_unique(cell.idx_, val, grid))
             {
                 cell.set(val);
-                return idx;
+                return cell.idx_;
             }
         }
 
-        // recurse
         cell.set(0);
-        return recursive_backtrack(grid.prev_idx(cell.idx_), grid);
-    }
 
+        Cell& prev = grid.cells()[grid.prev_idx(cell.idx_)];
+        return try_set_or_backtrack(prev, grid);
+    }
 }
 
 Solver::Solver(Grid& grid) : grid_(grid)
@@ -57,24 +54,10 @@ void Solver::solve_step()
 {
     Cell& cell = grid_.cells()[next_idx_];
 
-    bool found = false;
-    for (uint8_t v = 1; v <= 9; ++v)
-    {
-        if (check_unique(cell.idx_, v, grid_))
-        {
-            cell.set(v);
-            found = true;
-            break;
-        }
-    }
+    cell.set(0);
+    int last_set_idx = try_set_or_backtrack(cell, grid_);
 
-    // backtracking
-    if (!found)
-    {
-        next_idx_ = recursive_backtrack(grid_.prev_idx(cell.idx_), grid_);
-    }
-
-    next_idx_ = grid_.next_idx(next_idx_);
+    next_idx_ = grid_.next_idx(last_set_idx);
     ++solve_steps_;
 }
 
