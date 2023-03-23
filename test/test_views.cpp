@@ -1,7 +1,7 @@
 #include <catch2/catch.hpp>
 #include "ranges.h"
 #include "chunk_view.h"
-//#include "interleave_view.h"
+#include "interleave_view.h"
 #include "join_with_view.h"
 
 #include <array>
@@ -49,21 +49,3 @@ TEST_CASE("join_with", "[views]")
     STATIC_REQUIRE(ranges::view<decltype(piped)>);
     CHECK_THAT(to_string(piped), Equals("a/b/c"s));
 }
-
-#if 0
-TEST_CASE("interleave", "[views]")
-{
-    using namespace std::literals;
-
-    std::vector matrix{
-        std::vector{'1', '2', '3' },
-        std::vector{'4', '5', '6' },
-        std::vector{'7', '8', '9' },
-    };
-
-    auto v = ranges::interleave(matrix);
-    
-    auto it = v.begin();
-    CHECK_THAT(to_string(*it), Equals("147"s));
-}
-#endif
