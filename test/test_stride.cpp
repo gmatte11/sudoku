@@ -1,7 +1,9 @@
-#include <catch2/catch.hpp>
-#include "stride_view.h"
+#include <catch2/catch_all.hpp>
+
+import sudoku.ranges;
 
 #include <array>
+#include <ranges>
 #include <vector>
 
 TEST_CASE("stride_view", "[views]")

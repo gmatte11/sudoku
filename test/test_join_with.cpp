@@ -1,5 +1,6 @@
-#include <catch2/catch.hpp>
-#include "join_with_view.h"
+#include <catch2/catch_all.hpp>
+
+import sudoku.ranges;
 
 #include <vector>
 #include <string_view>

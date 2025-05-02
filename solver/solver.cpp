@@ -5,7 +5,6 @@
 
 #include <iterator>
 
-
 namespace 
 {
     using Cell = Grid::Cell;

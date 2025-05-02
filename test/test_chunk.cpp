@@ -1,8 +1,9 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
-#include "chunk_view.h"
+#include <catch2/catch_all.hpp>
+
+import sudoku.ranges;
 
 #include <array>
+#include <ranges>
 #include <vector>
 
 using namespace Catch::Matchers;
